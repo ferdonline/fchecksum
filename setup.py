@@ -1,12 +1,9 @@
 from setuptools import setup
-from setuptools.command.test import test as TestCommand
-import sys
 
 FSCHECK_VERSION = 0.1
 
 
 def setup_package():
-    setup()
     setup(
         name="fscheck",
         version=FSCHECK_VERSION,
