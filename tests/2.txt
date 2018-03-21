@@ -1,0 +1,7 @@
+c215a54dcc5cc file1.ok
+aaaaaaaaaaa file2.diff
+123456 file5.onlyright
+12345 "file with spaces"
+ file3.nocheck_1
+ file3.nocheck_2
+only_checksum_2
