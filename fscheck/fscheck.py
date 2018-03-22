@@ -9,7 +9,10 @@ from pyspark.storagelevel import StorageLevel
 
 
 _MB = 1024**2
-_DEBUG=True
+_DEFAULTS = dict(
+    delimiter=",",
+    verbosity=1,
+)
 
 spark_config = {
     "spark.shuffle.compress": False,
@@ -18,26 +21,29 @@ spark_config = {
 }
 
 
+
 SCHEMA = T.StructType([
     T.StructField("checksum", T.StringType(), False),
     T.StructField("filename", T.StringType(), True),
 ])
 
 
-def run(file1, file2, output=True, spark_options=None):
+def run(file1, file2, output=True, spark_options=None, **opts):
+    # type: (str, str, object, object, **object) -> dict
+
     # ====== Init Spark and dataframes ======
     sm.create("fscheck", spark_config, spark_options)
-    df1 = sm.spark.read.schema(SCHEMA).csv(file1, sep=" ")
-    df2 = sm.spark.read.schema(SCHEMA).csv(file2, sep=" ")
     
-    if _DEBUG:
-        df1.show()
-        df2.show()
+    options = _DEFAULTS.copy()
+    options.update(opts)
+    df1 = sm.spark.read.schema(SCHEMA).csv(file1, sep=options["delimiter"])
+    df2 = sm.spark.read.schema(SCHEMA).csv(file2, sep=options["delimiter"])
         
     # ======  Optimization ======
     n_partitions = df1.rdd.getNumPartitions()
     shuffle_partitions = ((n_partitions-1)/50 +1) * 50
-    print("Processing {} partitions (shuffle counts: {})".format(n_partitions, shuffle_partitions))
+    if options["verbosity"]:
+        print("Processing {} partitions (shuffle counts: {})".format(n_partitions, shuffle_partitions))
     sm.conf.set("spark.sql.shuffle.partitions", shuffle_partitions)
 
     df1=df1.repartition("filename").persist(StorageLevel.MEMORY_AND_DISK)
@@ -91,7 +97,8 @@ def run(file1, file2, output=True, spark_options=None):
 
         for name, df in all_dfs.items():
             out_filepath = os.path.join(output, name + ".csv")
-            print(" - Creating " + out_filepath)
+            if options["verbosity"]:
+                print(" - Creating " + out_filepath)
             df.write.csv(out_filepath, mode="overwrite")
 
     return all_dfs
