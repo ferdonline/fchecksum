@@ -1,7 +1,7 @@
 import fscheck
 
 # Init
-all_dfs = fscheck.run("tests/1.txt", "tests/2.txt", write_out=False)
+all_dfs = fscheck.run("tests/1.txt", "tests/2.txt", output=False)
 
 
 class Expected:
