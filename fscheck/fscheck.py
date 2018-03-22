@@ -66,12 +66,12 @@ def run(file1, file2, output=True, spark_options=None):
 
     # 3 Missing field
     problematic_left = (df1
-        .where(df1.filename.isNull() | df1.checksum.isNull())
-        .select(F.concat(df1.checksum, F.lit(" "), df1.filename).alias("entry"))
+        .where("filename is NULL OR checksum is NULL")
+        .select(F.when(df1.filename.isNull(), df1.checksum).otherwise(df1.filename).alias("entry"))
     )
     problematic_right = (df2
-        .where(df2.filename.isNull() | df2.checksum.isNull())
-        .select(F.concat(df2.checksum, F.lit(" "), df2.filename).alias("entry"))
+        .where("filename is NULL OR checksum is NULL")
+        .select(F.when(df2.filename.isNull(), df2.checksum).otherwise(df2.filename).alias("entry"))
     )
     
     # ====== Results gathering ======
