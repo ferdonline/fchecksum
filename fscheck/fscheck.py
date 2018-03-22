@@ -1,7 +1,12 @@
 from __future__ import absolute_import
 from pyspark.sql import types as T
-import sparkmanager as sm
+from pyspark.sql import functions as F
+from collections import OrderedDict
 import os
+
+import sparkmanager as sm
+from pyspark.storagelevel import StorageLevel
+
 
 _MB = 1024**2
 _DEBUG=True
@@ -20,17 +25,25 @@ SCHEMA = T.StructType([
 
 
 def run(file1, file2, output=True, spark_options=None):
+    # ====== Init Spark and dataframes ======
     sm.create("fscheck", spark_config, spark_options)
     df1 = sm.spark.read.schema(SCHEMA).csv(file1, sep=" ")
     df2 = sm.spark.read.schema(SCHEMA).csv(file2, sep=" ")
-
+    
     if _DEBUG:
-        df1=df1.cache()
-        df2 = df2.cache()
         df1.show()
         df2.show()
+        
+    # ======  Optimization ======
+    n_partitions = df1.rdd.getNumPartitions()
+    shuffle_partitions = ((n_partitions-1)/50 +1) * 50
+    print("Processing {} partitions (shuffle counts: {})".format(n_partitions, shuffle_partitions))
+    sm.conf.set("spark.sql.shuffle.partitions", shuffle_partitions)
 
-    ### Checks
+    df1=df1.repartition("filename").persist(StorageLevel.MEMORY_AND_DISK)
+    df2=df2.repartition("filename").persist(StorageLevel.MEMORY_AND_DISK)
+
+    # ======  Checks ======
     # 1 Only left and right
     only_left = (df1
         .join(df2, "filename", how="left_anti")
@@ -53,27 +66,23 @@ def run(file1, file2, output=True, spark_options=None):
 
     # 3 Missing field
     problematic_left = (df1
-        .where(df1.filename.isNull())
-        .select(df1.checksum).alias("filename")
-    ).union(df1
-        .where(df1.checksum.isNull())
-        .select(df1.filename)
+        .where(df1.filename.isNull() | df1.checksum.isNull())
+        .select(F.concat(df1.checksum, F.lit(" "), df1.filename).alias("entry"))
     )
     problematic_right = (df2
-        .where(df2.filename.isNull())
-        .select(df2.checksum).alias("filename")
-    ).union(df2
-        .where(df2.checksum.isNull())
-        .select(df2.filename)
+        .where(df2.filename.isNull() | df2.checksum.isNull())
+        .select(F.concat(df2.checksum, F.lit(" "), df2.filename).alias("entry"))
     )
+    
+    # ====== Results gathering ======
 
-    all_dfs = {
-        "only_left": only_left,
-        "only_right": only_right,
-        "different_checksum": different_checksum,
-        "problematic_left": problematic_left,
-        "problematic_right": problematic_right
-    }
+    all_dfs = OrderedDict([
+        ("only_left", only_left),
+        ("only_right", only_right),
+        ("different_checksum", different_checksum),
+        ("problematic_left", problematic_left),
+        ("problematic_right", problematic_right)
+    ])
 
     if output:
         if output is True:
@@ -84,7 +93,5 @@ def run(file1, file2, output=True, spark_options=None):
             out_filepath = os.path.join(output, name + ".csv")
             print(" - Creating " + out_filepath)
             df.write.csv(out_filepath, mode="overwrite")
-
-    print("Complete")
 
     return all_dfs
