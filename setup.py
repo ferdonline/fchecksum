@@ -40,7 +40,7 @@ def setup_package():
         },
         entry_points={
             'console_scripts': [
-                'fschecksum = fscheck.commands:fschecksum'
+                'fschecksum = fscheck.commands:fsumcheck'
             ]
         }
     )

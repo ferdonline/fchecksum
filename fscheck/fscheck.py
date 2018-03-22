@@ -8,9 +8,7 @@ _DEBUG=True
 
 spark_config = {
     "spark.shuffle.compress": False,
-    "spark.checkpoint.compress": True,
     "spark.sql.autoBroadcastJoinThreshold": 0,
-    # "spark.sql.catalogImplementation": "hive",
     "spark.sql.files.maxPartitionBytes": 128 * _MB
 }
 
@@ -21,8 +19,8 @@ SCHEMA = T.StructType([
 ])
 
 
-def run(file1, file2, write_out=True, spark_opts=""):
-    sm.create("fscheck", spark_config, spark_opts)
+def run(file1, file2, output=True, spark_options=None):
+    sm.create("fscheck", spark_config, spark_options)
     df1 = sm.spark.read.schema(SCHEMA).csv(file1, sep=" ")
     df2 = sm.spark.read.schema(SCHEMA).csv(file2, sep=" ")
 
@@ -77,13 +75,16 @@ def run(file1, file2, write_out=True, spark_opts=""):
         "problematic_right": problematic_right
     }
 
-    if write_out:
-        if write_out is True:
-            write_out="fscheck_output"
-        os.path.exists(write_out) or os.makedirs(write_out)
+    if output:
+        if output is True:
+            output="fscheck_output"
+        os.path.exists(output) or os.makedirs(output)
 
         for name, df in all_dfs.items():
-            out_filepath = os.path.join(write_out, name + ".csv")
-            df.write.csv(out_filepath, sep="", mode="overwrite")
+            out_filepath = os.path.join(output, name + ".csv")
+            print(" - Creating " + out_filepath)
+            df.write.csv(out_filepath, mode="overwrite")
+
+    print("Complete")
 
     return all_dfs
