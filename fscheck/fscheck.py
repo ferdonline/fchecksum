@@ -96,9 +96,17 @@ def run(file1, file2, output=True, spark_options=None, **opts):
         os.path.exists(output) or os.makedirs(output)
 
         for name, df in all_dfs.items():
-            out_filepath = os.path.join(output, name + ".csv")
+            df = df.cache()
+            out_filepath = os.path.join(output, name + ".csv.dir")
             if options["verbosity"]:
                 print(" - Creating " + out_filepath)
             df.write.csv(out_filepath, mode="overwrite")
+			
+            # Quick merge
+            os.system("cat {}/*.csv > {} ".format(out_filepath, os.path.join(output, name + ".csv")))
+            os.system("rm -rf {}".format(out_filepath))
+
+            print("   Total entries: {}".format( df.count() ))
+            df.unpersist()
 
     return all_dfs

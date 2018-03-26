@@ -28,9 +28,8 @@ def fsumcheck():
     optional_arg_names = ['output', 'spark_options']
     opt_args = {opt: args[opt] for opt in optional_arg_names if args[opt] is not None}
 
-    fscheck.run(args['file1'], args['file2'], delimiter=" ", **opt_args)
+    fscheck.run(args['file1'], args['file2'], **opt_args)
 
-    input("Press enter to quit")
 
 
 def _sanitize_opts(docopt_opts):
