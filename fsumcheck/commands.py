@@ -1,4 +1,5 @@
-import fscheck
+from __future__ import absolute_import, print_function
+from . import fscheck
 from docopt import docopt
 from os import path as osp
 
@@ -31,7 +32,5 @@ def fsumcheck():
     fscheck.run(args['file1'], args['file2'], **opt_args)
 
 
-
 def _sanitize_opts(docopt_opts):
     return {opt.strip("<>-").replace("-", "_"): val for opt, val in docopt_opts.items()}
-

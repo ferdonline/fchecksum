@@ -5,10 +5,10 @@ FSCHECK_VERSION = 0.1
 
 def setup_package():
     setup(
-        name="fscheck",
+        name="fchecksum",
         version=FSCHECK_VERSION,
         packages=[
-            'fscheck'
+            'fsumcheck'
         ],
         package_data={
         },
@@ -16,14 +16,10 @@ def setup_package():
         ],
         #  ----- Requirements -----
         install_requires=[
-            'sparkmanager',
             'pyspark==2.2.1',
+            'sparkmanager',
             'future',
-            'docopt',
-            'enum34;python_version<"3.4"',
-            'numpy',
-            'lazy-property',
-            'progress'
+            'docopt'
         ],
         dependency_links=[
             'https://github.com/matz-e/sparkmanager/tarball/master#egg=sparkmanager-0.0.1'
@@ -40,7 +36,7 @@ def setup_package():
         },
         entry_points={
             'console_scripts': [
-                'fschecksum = fscheck.commands:fsumcheck'
+                'fsumcheck = fsumcheck.commands:fsumcheck'
             ]
         }
     )

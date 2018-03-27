@@ -1,7 +1,7 @@
-import fscheck
+import fsumcheck
 
 # Init
-all_dfs = fscheck.run("tests/1.txt", "tests/2.txt", output=False, delimiter=" ")
+all_dfs = fsumcheck.run("tests/1.txt", "tests/2.txt", output=False, delimiter=" ")
 
 
 class Expected:

@@ -21,7 +21,6 @@ spark_config = {
 }
 
 
-
 SCHEMA = T.StructType([
     T.StructField("checksum", T.StringType(), False),
     T.StructField("filename", T.StringType(), True),
@@ -32,31 +31,34 @@ def run(file1, file2, output=True, spark_options=None, **opts):
     # type: (str, str, object, object, **object) -> dict
 
     # ====== Init Spark and dataframes ======
-    sm.create("fscheck", spark_config, spark_options)
-    
+    sm.create("fsumcheck", spark_config, spark_options)
+
     options = _DEFAULTS.copy()
     options.update(opts)
     df1 = sm.spark.read.schema(SCHEMA).csv(file1, sep=options["delimiter"])
     df2 = sm.spark.read.schema(SCHEMA).csv(file2, sep=options["delimiter"])
-        
+
     # ======  Optimization ======
     n_partitions = df1.rdd.getNumPartitions()
-    shuffle_partitions = ((n_partitions-1)/50 +1) * 50
+    shuffle_partitions = ((n_partitions-1)//50 + 1) * 50
     if options["verbosity"]:
-        print("Processing {} partitions (shuffle counts: {})".format(n_partitions, shuffle_partitions))
+        print("Processing {} partitions (shuffle counts: {})"
+              .format(n_partitions, shuffle_partitions))
     sm.conf.set("spark.sql.shuffle.partitions", shuffle_partitions)
 
-    df1=df1.repartition("filename").persist(StorageLevel.MEMORY_AND_DISK)
-    df2=df2.repartition("filename").persist(StorageLevel.MEMORY_AND_DISK)
+    df1 = df1.repartition("filename").persist(StorageLevel.MEMORY_AND_DISK)
+    df2 = df2.repartition("filename").persist(StorageLevel.MEMORY_AND_DISK)
 
     # ======  Checks ======
     # 1 Only left and right
-    only_left = (df1
+    only_left = (
+        df1
         .join(df2, "filename", how="left_anti")
         .select(df1.filename)
         .where(df1.filename.isNotNull())
     )
-    only_right = (df2
+    only_right = (
+        df2
         .join(df1, "filename", how="left_anti")
         .select(df2.filename)
         .where(df2.filename.isNotNull())
@@ -65,21 +67,23 @@ def run(file1, file2, output=True, spark_options=None, **opts):
     # 2 Different checksum
     different_checksum = (
         df1
-            .join(df2, "filename")
-            .where(df1.checksum != df2.checksum)
-            .select(df1.filename)
+        .join(df2, "filename")
+        .where(df1.checksum != df2.checksum)
+        .select(df1.filename)
     )
 
     # 3 Missing field
-    problematic_left = (df1
+    problematic_left = (
+        df1
         .where("filename is NULL OR checksum is NULL")
         .select(F.when(df1.filename.isNull(), df1.checksum).otherwise(df1.filename).alias("entry"))
     )
-    problematic_right = (df2
+    problematic_right = (
+        df2
         .where("filename is NULL OR checksum is NULL")
         .select(F.when(df2.filename.isNull(), df2.checksum).otherwise(df2.filename).alias("entry"))
     )
-    
+
     # ====== Results gathering ======
 
     all_dfs = OrderedDict([
@@ -92,7 +96,7 @@ def run(file1, file2, output=True, spark_options=None, **opts):
 
     if output:
         if output is True:
-            output="fscheck_output"
+            output = "fscheck_output"
         os.path.exists(output) or os.makedirs(output)
 
         for name, df in all_dfs.items():
@@ -101,12 +105,13 @@ def run(file1, file2, output=True, spark_options=None, **opts):
             if options["verbosity"]:
                 print(" - Creating " + out_filepath)
             df.write.csv(out_filepath, mode="overwrite")
-			
+
             # Quick merge
-            os.system("cat {}/*.csv > {} ".format(out_filepath, os.path.join(output, name + ".csv")))
+            os.system("cat {}/*.csv > {} "
+                      .format(out_filepath, os.path.join(output, name + ".csv")))
             os.system("rm -rf {}".format(out_filepath))
 
-            print("   Total entries: {}".format( df.count() ))
+            print("   Total entries: {}".format(df.count()))
             df.unpersist()
 
     return all_dfs
