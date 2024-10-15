@@ -16,7 +16,7 @@ def setup_package():
         ],
         #  ----- Requirements -----
         install_requires=[
-            'pyspark==2.2.1',
+            'pyspark==3.3.2',
             'sparkmanager',
             'future',
             'docopt'
